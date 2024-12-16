@@ -1,0 +1,10 @@
+name: rust-lambda
+description: Learning rust with lambda
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: aws-typescript

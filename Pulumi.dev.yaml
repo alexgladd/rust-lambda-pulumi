@@ -1,0 +1,8 @@
+# empty string
+encryptionsalt: v1:Q2FFg5W8bNk=:v1:S4irEL4M7JjhwYPf:by868lCDxWJJgC3mbZ2q5g/1NgM8zA==
+config:
+  aws:region: us-east-1
+  aws:defaultTags:
+    tags:
+      project: rust-lambda-pulumi
+      stack: dev
