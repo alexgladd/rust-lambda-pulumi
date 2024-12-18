@@ -16,6 +16,9 @@ pub(crate) enum ApiError {
     #[error("Resource not found")]
     NotFound,
 
+    #[error("Method not allowed")]
+    BadMethod,
+
     #[error("Internal server error")]
     Internal,
 }
@@ -31,6 +34,13 @@ impl IntoResponse for ApiError {
                     timestamp: Utc::now(),
                 },
             ),
+            ApiError::BadMethod => (
+                StatusCode::METHOD_NOT_ALLOWED,
+                ApiErrorPayload {
+                    message: self.to_string(),
+                    timestamp: Utc::now(),
+                },
+            ),
             ApiError::Internal => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ApiErrorPayload {
@@ -38,13 +48,6 @@ impl IntoResponse for ApiError {
                     timestamp: Utc::now(),
                 },
             ),
-            // _ => (
-            //     StatusCode::INTERNAL_SERVER_ERROR,
-            //     ApiErrorPayload {
-            //         message: format!("Unknown error: {}", self),
-            //         timestamp: Utc::now(),
-            //     },
-            // ),
         };
 
         (code, Json(body)).into_response()
