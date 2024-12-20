@@ -1,5 +1,5 @@
 use axum::{
-    extract::rejection::JsonRejection,
+    extract::rejection::{JsonRejection, PathRejection},
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -12,6 +12,9 @@ use serde::Serialize;
 pub(crate) enum ApiError {
     #[error(transparent)]
     JsonDeserialization(#[from] JsonRejection),
+
+    #[error(transparent)]
+    PathDeserialization(#[from] PathRejection),
 
     #[error("Resource not found")]
     NotFound,
@@ -27,6 +30,7 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (code, body) = match self {
             ApiError::JsonDeserialization(r) => (r.status(), r.into()),
+            ApiError::PathDeserialization(r) => (r.status(), r.into()),
             ApiError::NotFound => (
                 StatusCode::NOT_FOUND,
                 ApiErrorPayload {
@@ -67,7 +71,25 @@ impl From<JsonRejection> for ApiErrorPayload {
             JsonRejection::JsonSyntaxError(_) => "Invalid JSON syntax",
             JsonRejection::MissingJsonContentType(_) => "Invalid Content-Type header",
             JsonRejection::BytesRejection(_) => "Unable to process request body",
-            _ => "Unknown error",
+            _ => "Unknown JSON error",
+        }
+        .into();
+
+        Self {
+            message,
+            timestamp: Utc::now(),
+        }
+    }
+}
+
+impl From<PathRejection> for ApiErrorPayload {
+    fn from(value: PathRejection) -> Self {
+        let message = match value {
+            PathRejection::FailedToDeserializePathParams(_) => {
+                "Path parameter deserialization failed"
+            }
+            PathRejection::MissingPathParams(_) => "Missing path parameter(s)",
+            _ => "Unknown path error",
         }
         .into();
 

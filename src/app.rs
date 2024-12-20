@@ -1,4 +1,5 @@
 use axum::{
+    extract::Path,
     http::StatusCode,
     response::{IntoResponse, Json},
     routing::{get, post},
@@ -10,14 +11,20 @@ use serde_json::{json, Value};
 
 use crate::err::ApiError;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Debug)]
 struct HelloReq {
     name: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 struct HelloRes {
     msg: String,
+}
+
+#[derive(Serialize, Debug)]
+struct UserRes {
+    msg: String,
+    user_id: String,
 }
 
 pub(crate) fn init_app() -> Router {
@@ -25,6 +32,7 @@ pub(crate) fn init_app() -> Router {
         .route("/", get(root))
         .route("/health", get(health))
         .route("/hello", post(hello))
+        .route("/user/:id", get(user_id))
         .route("/error", get(server_err))
         .method_not_allowed_fallback(bad_method)
         .fallback(not_found);
@@ -52,6 +60,17 @@ async fn hello(
     println!("Response created! {:?}", res);
 
     (StatusCode::CREATED, Json(res))
+}
+
+async fn user_id(
+    WithRejection(user_id, _): WithRejection<Path<String>, ApiError>,
+) -> impl IntoResponse {
+    let res = UserRes {
+        msg: "User ID accepted".into(),
+        user_id: user_id.0,
+    };
+
+    (StatusCode::OK, Json(res))
 }
 
 async fn server_err() -> impl IntoResponse {
