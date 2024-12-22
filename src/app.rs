@@ -1,5 +1,5 @@
 use axum::{
-    extract::Path,
+    extract::{Path, Query},
     http::StatusCode,
     response::{IntoResponse, Json},
     routing::{get, post},
@@ -16,6 +16,12 @@ struct HelloReq {
     name: String,
 }
 
+#[derive(Deserialize, Debug)]
+struct Pagination {
+    page: u32,
+    count: u32,
+}
+
 #[derive(Serialize, Debug)]
 struct HelloRes {
     msg: String,
@@ -27,12 +33,19 @@ struct UserRes {
     user_id: String,
 }
 
+#[derive(Serialize, Debug)]
+struct PageRes {
+    from: u32,
+    to: u32,
+}
+
 pub(crate) fn init_app() -> Router {
     let app = Router::new()
         .route("/", get(root))
         .route("/health", get(health))
         .route("/hello", post(hello))
         .route("/user/:id", get(user_id))
+        .route("/list", get(page))
         .route("/error", get(server_err))
         .method_not_allowed_fallback(bad_method)
         .fallback(not_found);
@@ -68,6 +81,17 @@ async fn user_id(
     let res = UserRes {
         msg: "User ID accepted".into(),
         user_id: user_id.0,
+    };
+
+    (StatusCode::OK, Json(res))
+}
+
+async fn page(
+    WithRejection(pagination, _): WithRejection<Query<Pagination>, ApiError>,
+) -> impl IntoResponse {
+    let res = PageRes {
+        from: pagination.page * pagination.count,
+        to: (pagination.page + 1) * pagination.count - 1,
     };
 
     (StatusCode::OK, Json(res))

@@ -1,5 +1,5 @@
 use axum::{
-    extract::rejection::{JsonRejection, PathRejection},
+    extract::rejection::{JsonRejection, PathRejection, QueryRejection},
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -16,6 +16,9 @@ pub(crate) enum ApiError {
     #[error(transparent)]
     PathDeserialization(#[from] PathRejection),
 
+    #[error(transparent)]
+    QueryDeserialization(#[from] QueryRejection),
+
     #[error("Resource not found")]
     NotFound,
 
@@ -31,6 +34,7 @@ impl IntoResponse for ApiError {
         let (code, body) = match self {
             ApiError::JsonDeserialization(r) => (r.status(), r.into()),
             ApiError::PathDeserialization(r) => (r.status(), r.into()),
+            ApiError::QueryDeserialization(r) => (r.status(), r.into()),
             ApiError::NotFound => (
                 StatusCode::NOT_FOUND,
                 ApiErrorPayload {
@@ -71,7 +75,7 @@ impl From<JsonRejection> for ApiErrorPayload {
             JsonRejection::JsonSyntaxError(_) => "Invalid JSON syntax",
             JsonRejection::MissingJsonContentType(_) => "Invalid Content-Type header",
             JsonRejection::BytesRejection(_) => "Unable to process request body",
-            _ => "Unknown JSON error",
+            _ => "Unknown JSON body error",
         }
         .into();
 
@@ -89,9 +93,23 @@ impl From<PathRejection> for ApiErrorPayload {
                 "Path parameter deserialization failed"
             }
             PathRejection::MissingPathParams(_) => "Missing path parameter(s)",
-            _ => "Unknown path error",
+            _ => "Unknown URL path error",
         }
         .into();
+
+        Self {
+            message,
+            timestamp: Utc::now(),
+        }
+    }
+}
+
+impl From<QueryRejection> for ApiErrorPayload {
+    fn from(value: QueryRejection) -> Self {
+        let message = match value {
+            QueryRejection::FailedToDeserializeQueryString(_) => "Query deserialization failed",
+            _ => "Unknown URL query error",
+        }.into();
 
         Self {
             message,
