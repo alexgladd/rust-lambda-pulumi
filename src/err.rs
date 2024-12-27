@@ -4,7 +4,8 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use chrono::{DateTime, Utc};
+use chrono::{SecondsFormat, Utc};
+use schemars::JsonSchema;
 use serde::Serialize;
 
 #[derive(thiserror::Error, Debug)]
@@ -31,6 +32,7 @@ pub(crate) enum ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        let timestamp = get_now_str();
         let (code, body) = match self {
             ApiError::JsonDeserialization(r) => (r.status(), r.into()),
             ApiError::PathDeserialization(r) => (r.status(), r.into()),
@@ -39,21 +41,21 @@ impl IntoResponse for ApiError {
                 StatusCode::NOT_FOUND,
                 ApiErrorPayload {
                     message: self.to_string(),
-                    timestamp: Utc::now(),
+                    timestamp,
                 },
             ),
             ApiError::BadMethod => (
                 StatusCode::METHOD_NOT_ALLOWED,
                 ApiErrorPayload {
                     message: self.to_string(),
-                    timestamp: Utc::now(),
+                    timestamp,
                 },
             ),
             ApiError::Internal => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ApiErrorPayload {
                     message: self.to_string(),
-                    timestamp: Utc::now(),
+                    timestamp,
                 },
             ),
         };
@@ -62,10 +64,10 @@ impl IntoResponse for ApiError {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub(crate) struct ApiErrorPayload {
     message: String,
-    timestamp: DateTime<Utc>,
+    timestamp: String,
 }
 
 impl From<JsonRejection> for ApiErrorPayload {
@@ -81,7 +83,7 @@ impl From<JsonRejection> for ApiErrorPayload {
 
         Self {
             message,
-            timestamp: Utc::now(),
+            timestamp: get_now_str(),
         }
     }
 }
@@ -99,7 +101,7 @@ impl From<PathRejection> for ApiErrorPayload {
 
         Self {
             message,
-            timestamp: Utc::now(),
+            timestamp: get_now_str(),
         }
     }
 }
@@ -109,11 +111,16 @@ impl From<QueryRejection> for ApiErrorPayload {
         let message = match value {
             QueryRejection::FailedToDeserializeQueryString(_) => "Query deserialization failed",
             _ => "Unknown URL query error",
-        }.into();
+        }
+        .into();
 
         Self {
             message,
-            timestamp: Utc::now(),
+            timestamp: get_now_str(),
         }
     }
+}
+
+fn get_now_str() -> String {
+    Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
 }
